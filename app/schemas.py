@@ -3,7 +3,7 @@ Pydantic schemas strictly matching the BUP CSE FEST 2026 GridWise LLM API contra
 """
 
 from enum import Enum
-from typing import List, Optional, Union
+from typing import Any, List, Optional, Union
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
@@ -52,6 +52,17 @@ class OptimizeEnergyRequest(BaseModel):
     operator_notes: List[str] = Field(..., min_length=1, max_length=3, description="1-3 natural language notes")
     hours: List[HourInput] = Field(..., description="Array of exactly 24 hourly entries")
     battery: BatteryInput = Field(..., description="Battery parameters")
+
+    @model_validator(mode="before")
+    def unwrap_nested_input(cls, data: Any) -> Any:
+        """
+        Allows both canonical payload and raw sample case wrappers:
+        { "id": "SAMPLE-01", "input": { ... } } -> automatically unpacks 'input'.
+        """
+        if isinstance(data, dict):
+            if "input" in data and isinstance(data["input"], dict):
+                return data["input"]
+        return data
 
     @field_validator("hours")
     def validate_hours_length_and_order(cls, v: List[HourInput]) -> List[HourInput]:
